@@ -1,0 +1,18 @@
+{
+  "TC_LOGIN_001": {
+    "username": "imran.shaikh@indexnine.com",
+    "password": "1234567890"
+  },
+  "TC_LOGIN_002": {
+    "username": "invalid@example.com",
+    "password": "wrong-password"
+  },
+  "TC_LOGIN_003": {
+    "username": "",
+    "password": ""
+  },
+  "TC_LOGIN_006": {
+    "username": "imran.shaikh@indexnine.com",
+    "password": "test@123"
+  }
+}
