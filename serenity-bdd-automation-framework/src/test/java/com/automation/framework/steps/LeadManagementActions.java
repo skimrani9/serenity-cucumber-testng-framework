@@ -7,7 +7,6 @@ import com.automation.framework.pageObjects.LeadManagementPage;
 
 import java.util.List;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class LeadManagementActions {
@@ -77,18 +76,24 @@ public class LeadManagementActions {
 
     @Step("Sort by Full Name and assert column is alphabetically sorted")
     public void assertLeadListSortedByFullNameAscending() {
-        leadManagementPage.clickSortHeaderContaining("Full Name");
-        List<String> col = leadManagementPage.columnTextsForHeader("Full Name");
-        assertFalse("Expected lead rows under Full Name", col.isEmpty());
-        assertTrue(leadManagementPage.isSortedAlphabetically(col));
+        List<String> col = leadManagementPage.sortByLeadListHeaderAscendingColumnValues("Full Name");
+        long nonBlankRows = col.stream().filter(s -> !s.trim().isEmpty()).count();
+        assertTrue("Expected at least one Full Name cell in the grid", nonBlankRows >= 1);
+        assertTrue("Sorting requires at least two rows (TC_10); grid has insufficient data", nonBlankRows >= 2);
+        assertTrue(String.format("Full Name column not ascending after sort (first 15 cells): %s",
+                        col.subList(0, Math.min(15, col.size()))),
+                leadManagementPage.isSortedAlphabetically(col));
     }
 
     @Step("Sort by Owner and assert column is alphabetically sorted")
     public void assertLeadListSortedByOwnerAscending() {
-        leadManagementPage.clickSortHeaderContaining("Owner");
-        List<String> col = leadManagementPage.columnTextsForHeader("Owner");
-        assertFalse("Expected lead rows under Owner", col.isEmpty());
-        assertTrue(leadManagementPage.isSortedAlphabetically(col));
+        List<String> col = leadManagementPage.sortByLeadListHeaderAscendingColumnValues("Owner");
+        long nonBlankRows = col.stream().filter(s -> !s.trim().isEmpty()).count();
+        assertTrue("Expected at least one Owner cell in the grid", nonBlankRows >= 1);
+        assertTrue("Sorting requires at least two rows (TC_10); grid has insufficient data", nonBlankRows >= 2);
+        assertTrue(String.format("Owner column not ascending after sort (first 15 cells): %s",
+                        col.subList(0, Math.min(15, col.size()))),
+                leadManagementPage.isSortedAlphabetically(col));
     }
 
     @Step("Exercise invalid email formats and assert field validation")

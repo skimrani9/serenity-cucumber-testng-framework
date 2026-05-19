@@ -33,26 +33,6 @@ Feature: Lead Management
     And user submits a lead using required fields from scenario "TC_06"
     Then the Lead created successfully message should appear
 
-  @rbac @wip @TC_01
-  Scenario: TC_01 Empty state when no lead is assigned to the new user
-    Given Robot RBAC Mailinator provisioning for scenario "TC_01" is pending port from Robot resources
-
-  @rbac @wip @TC_02
-  Scenario: TC_02 User without create permission does not see Add Lead
-    Given Robot RBAC Mailinator provisioning for scenario "TC_02" is pending port from Robot resources
-
-  @rbac @wip @TC_07
-  Scenario: TC_07 Single project visibility for scoped user
-    Given Robot RBAC Mailinator provisioning for scenario "TC_07" is pending port from Robot resources
-
-  @rbac @wip @TC_08
-  Scenario: TC_08 Multiple project visibility for scoped user
-    Given Robot RBAC Mailinator provisioning for scenario "TC_08" is pending port from Robot resources
-
-  @wip @TC_09
-  Scenario: TC_09 Unauthorized user direct URL / list access
-    Given Lead scenario "TC_09" needs clarified restricted-user URL expectations
-
   @automated @TC_10
   Scenario: TC_10 Lead list sort by Full Name and Owner
     Given admin is logged in via OTP for lead scenario "TC_10"

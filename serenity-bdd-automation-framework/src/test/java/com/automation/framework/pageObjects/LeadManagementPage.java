@@ -13,7 +13,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -389,38 +389,265 @@ public class LeadManagementPage extends BasePage {
     }
 
     public void clickSortHeaderContaining(String textFragment) {
-        String xpath = "//th//div[contains(text(),\"" + escapeQuotes(textFragment) + "\")]";
+        String safe = escapeQuotes(textFragment);
+        String xpath =
+                "//th//*[contains(normalize-space(.),\"" + safe + "\")]|//th[contains(normalize-space(.),\"" 
+                        + safe + "\")]";
         WebElementFacade h = $(By.xpath(xpath));
         scrollTo(h);
         h.waitUntilClickable().click();
-        waitABit(800);
+        waitABit(900);
+    }
+
+    /**
+     * Clicks header until the visible column reads ascending A–Z (some grids cycle neutral → desc → asc).
+     */
+    public List<String> sortByLeadListHeaderAscendingColumnValues(String headerLabel) {
+        List<String> last = new ArrayList<>();
+        for (int pass = 0; pass < 4; pass++) {
+            clickSortHeaderContaining(headerLabel);
+            waitABit(550);
+            last = columnTextsForHeader(headerLabel);
+            if (last.size() <= 1 || isSortedAlphabetically(last)) {
+                return last;
+            }
+        }
+        return last;
     }
 
     public List<String> columnTextsForHeader(String headerLabel) {
-        int idx = headerColumnIndex(headerLabel);
+        int idx = resolveLeadTableTdColumnIndex(headerLabel);
         if (idx < 1) {
             throw new IllegalStateException("Column header not found: " + headerLabel);
         }
-        List<WebElementFacade> cells = findAll(By.xpath("//tbody//tr/td[" + idx + "]"));
-        return cells.stream().map(WebElementFacade::getText).map(String::trim).filter(s -> !s.isEmpty())
+        String xp = "//tbody/tr[count(./td)>=" + idx + "]/td[" + idx + "]";
+        List<WebElementFacade> cells = findAll(By.xpath(xp));
+        return cells.stream().map(WebElementFacade::getText).map(LeadManagementPage::normalizeTableCellText)
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
-    private int headerColumnIndex(String headerLabel) {
-        List<WebElementFacade> headers = findAll(By.xpath("//thead//tr//th"));
-        for (int i = 0; i < headers.size(); i++) {
-            String txt = headers.get(i).getText().replace('\n', ' ').trim();
-            if (txt.contains(headerLabel)) {
-                return i + 1;
+    /**
+     * Colspan-aware thead mapping, legacy Robot offsets, and content scoring when multiple columns match.
+     */
+    private int resolveLeadTableTdColumnIndex(String headerLabel) {
+        LinkedHashSet<Integer> ordered = collectColumnIndexCandidates(headerLabel);
+        LinkedHashSet<Integer> readable = new LinkedHashSet<>();
+        for (Integer idx : ordered) {
+            if (idx != null && idx > 0 && tdColumnHasSomeReadableText(idx)) {
+                readable.add(idx);
             }
         }
-        return -1;
+        LinkedHashSet<Integer> pool = readable.isEmpty() ? ordered : readable;
+        if (pool.isEmpty()) {
+            return -1;
+        }
+        if (pool.size() == 1) {
+            return pool.iterator().next();
+        }
+        return pickBestColumnByContent(pool, headerLabel);
     }
 
+    private LinkedHashSet<Integer> collectColumnIndexCandidates(String headerLabel) {
+        LinkedHashSet<Integer> cand = new LinkedHashSet<>();
+        int trCount = theadRowCount();
+        for (int tr = 1; tr <= trCount; tr++) {
+            cand.addAll(columnIndicesMatchingColspanThead(tr, headerLabel));
+            cand.addAll(legacyRobotOrdinalPlusTwoCandidates(tr, headerLabel));
+            cand.addAll(legacyDomPhysicalThCandidates(tr, headerLabel));
+        }
+        int brute = bruteForceLikeliestColumnIndex(headerLabel);
+        if (brute > 0) {
+            cand.add(brute);
+        }
+        return cand;
+    }
+
+    private int theadRowCount() {
+        int n = getDriver().findElements(By.xpath("//thead/tr")).size();
+        return Math.max(n, 1);
+    }
+
+    private List<Integer> columnIndicesMatchingColspanThead(int theadTrOneBased, String headerLabel) {
+        List<WebElementFacade> ths = findAll(By.xpath("//thead/tr[" + theadTrOneBased + "]//th"));
+        List<Integer> matches = new ArrayList<>();
+        int col0 = 0;
+        for (WebElementFacade th : ths) {
+            int span = parseColspan(th);
+            String label = normalizeTableCellText(th.getText());
+            if (label.contains(headerLabel)) {
+                matches.add(col0 + 1);
+            }
+            col0 += span;
+        }
+        return matches;
+    }
+
+    private static int parseColspan(WebElementFacade th) {
+        try {
+            String c = th.getAttribute("colspan");
+            if (c == null || c.isBlank()) {
+                return 1;
+            }
+            return Math.max(1, Integer.parseInt(c.trim()));
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+    }
+
+    private List<Integer> legacyRobotOrdinalPlusTwoCandidates(int theadTrOneBased, String headerLabel) {
+        List<WebElementFacade> ths = findAll(By.xpath("//thead/tr[" + theadTrOneBased + "]//th"));
+        List<Integer> out = new ArrayList<>();
+        int ord = -1;
+        for (WebElementFacade th : ths) {
+            String t = normalizeTableCellText(th.getText());
+            if (t.isEmpty()) {
+                continue;
+            }
+            ord++;
+            if (t.contains(headerLabel)) {
+                out.add(ord + 2);
+            }
+        }
+        return out;
+    }
+
+    private List<Integer> legacyDomPhysicalThCandidates(int theadTrOneBased, String headerLabel) {
+        List<WebElementFacade> ths = findAll(By.xpath("//thead/tr[" + theadTrOneBased + "]//th"));
+        List<Integer> out = new ArrayList<>();
+        for (int i = 0; i < ths.size(); i++) {
+            if (normalizeTableCellText(ths.get(i).getText()).contains(headerLabel)) {
+                out.add(i + 1);
+            }
+        }
+        return out;
+    }
+
+    private int bruteForceLikeliestColumnIndex(String headerLabel) {
+        int max = maxTdsInAnyBodyRow();
+        if (max < 1) {
+            return -1;
+        }
+        int best = 1;
+        double bestScore = -1;
+        for (int c = 1; c <= max; c++) {
+            double sc = scoreColumnForHeaderGuess(c, headerLabel);
+            if (sc > bestScore) {
+                bestScore = sc;
+                best = c;
+            }
+        }
+        return bestScore > 0.2 ? best : -1;
+    }
+
+    private int maxTdsInAnyBodyRow() {
+        int max = 0;
+        for (WebElement tr : getDriver().findElements(By.xpath("//tbody/tr"))) {
+            max = Math.max(max, tr.findElements(By.tagName("td")).size());
+        }
+        return max;
+    }
+
+    private double scoreColumnForHeaderGuess(int tdIndexOneBased, String headerLabel) {
+        List<String> cells = readBodyColumnRawTexts(tdIndexOneBased);
+        long nonBlank = cells.stream().filter(s -> !normalizeTableCellText(s).isBlank()).count();
+        if (nonBlank == 0) {
+            return 0;
+        }
+        String hl = headerLabel.toLowerCase();
+        if (hl.contains("full") && hl.contains("name")) {
+            long nameLike = cells.stream().map(LeadManagementPage::normalizeTableCellText)
+                    .filter(s -> !s.isBlank() && s.matches("(?s).*(\\p{L}{2,}.*\\s+.*\\p{L}{2,}|\\p{L}{3,}).*"))
+                    .count();
+            return nameLike * 1.0 / nonBlank;
+        }
+        if (hl.contains("owner")) {
+            long ownerLike = cells.stream().map(LeadManagementPage::normalizeTableCellText)
+                    .filter(s -> !s.isBlank() && (s.contains("@") || (s.length() >= 2 && s.length() <= 48))).count();
+            return ownerLike * 1.0 / nonBlank;
+        }
+        return nonBlank * 1.0 / (cells.size() + 1);
+    }
+
+    private List<String> readBodyColumnRawTexts(int tdIndexOneBased) {
+        String xp = "//tbody/tr[count(./td)>=" + tdIndexOneBased + "]/td[" + tdIndexOneBased + "]";
+        return findAll(By.xpath(xp)).stream().map(WebElementFacade::getText).collect(Collectors.toList());
+    }
+
+    private int pickBestColumnByContent(LinkedHashSet<Integer> candidates, String headerLabel) {
+        int best = candidates.iterator().next();
+        double bestScore = -1;
+        for (int idx : candidates) {
+            double sc = scoreColumnForHeaderGuess(idx, headerLabel);
+            if (sc > bestScore) {
+                bestScore = sc;
+                best = idx;
+            }
+        }
+        return best;
+    }
+
+    private boolean tdColumnHasSomeReadableText(int tdIndexOneBased) {
+        String xp = "//tbody/tr[position()<=12][count(./td)>=" + tdIndexOneBased + "]/td[" + tdIndexOneBased + "]";
+        return findAll(By.xpath(xp)).stream().map(WebElementFacade::getText).map(LeadManagementPage::normalizeTableCellText)
+                .anyMatch(s -> !s.isBlank());
+    }
+
+    /** Collapses innerText / newline noise so columns match Robot ({@code innerText} split) semantics. */
+    private static String normalizeTableCellText(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        return raw.replace('\n', ' ').replaceAll("\\s+", " ").trim();
+    }
+
+    /** Typical web grids sort case-insensitive; supports blanks pinned before or after text. */
     public boolean isSortedAlphabetically(List<String> values) {
-        List<String> sorted = new ArrayList<>(values);
-        sorted.sort(Comparator.comparing(String::toLowerCase));
-        return values.equals(sorted);
+        List<String> n = values.stream().map(LeadManagementPage::normalizeTableCellText)
+                .map(LeadManagementPage::stripForSortCompare)
+                .collect(Collectors.toCollection(ArrayList::new));
+        return isAscendingWithBlankRule(n, true) || isAscendingWithBlankRule(n, false);
+    }
+
+    private static boolean isAscendingWithBlankRule(List<String> n, boolean blanksBeforeText) {
+        for (int i = 1; i < n.size(); i++) {
+            if (compareSortKeys(n.get(i - 1), n.get(i), blanksBeforeText) > 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static int compareSortKeys(String a, String b, boolean blanksBeforeText) {
+        boolean ae = a == null || a.isEmpty();
+        boolean be = b == null || b.isEmpty();
+        if (ae && be) {
+            return 0;
+        }
+        if (ae) {
+            return blanksBeforeText ? -1 : 1;
+        }
+        if (be) {
+            return blanksBeforeText ? 1 : -1;
+        }
+        return String.CASE_INSENSITIVE_ORDER.compare(a, b);
+    }
+
+    private static String stripForSortCompare(String cell) {
+        if (cell == null || cell.isEmpty()) {
+            return "";
+        }
+        String s = stripLeadingSortIgnoredPrefix(cell);
+        return s.replaceFirst("(?i)^(mr|mrs|ms|miss|dr)\\.?\\s+", "").trim();
+    }
+
+    /**
+     * Strips Sr / row prefixes (e.g. {@code "1 "} or numeric bullet) where present so sorting matches visible name ordering.
+     */
+    private static String stripLeadingSortIgnoredPrefix(String cell) {
+        if (cell == null || cell.isEmpty()) {
+            return "";
+        }
+        return cell.replaceFirst("^\\s*\\d+\\s+", "").trim();
     }
 
     public void fillRequiredLeadFieldsFromScenario(LeadTestDataReader.LeadScenario data) {
