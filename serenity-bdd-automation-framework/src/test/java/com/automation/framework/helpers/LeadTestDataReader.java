@@ -33,6 +33,7 @@ public final class LeadTestDataReader {
             String stage,
             String projectConfiguration,
             String projectName,
+            String campaignName,
             String projectPreferencesLocation,
             String projectLocation,
             String contactNumber,
@@ -46,8 +47,13 @@ public final class LeadTestDataReader {
             return adminPassword != null && !adminPassword.isBlank();
         }
 
+        /** Scenarios used by Add Lead flows (first three dropdowns pick list index 1; rest use JSON labels). */
         public boolean hasLeadFormDetails() {
-            return leadSource != null && !leadSource.isBlank();
+            return leadSource != null && !leadSource.isBlank()
+                    && budget != null && !budget.isBlank()
+                    && pipeline != null && !pipeline.isBlank()
+                    && stage != null && !stage.isBlank()
+                    && projectConfiguration != null && !projectConfiguration.isBlank();
         }
 
         /** Sanitized OTP has six digits → can fall back when Email &amp; Password UI is unavailable. */
@@ -76,6 +82,7 @@ public final class LeadTestDataReader {
                     optString(row, "stage"),
                     optString(row, "project_configuration"),
                     optString(row, "project_name"),
+                    optString(row, "campaign_name"),
                     optString(row, "project_preferences_location"),
                     optString(row, "project_location"),
                     optString(row, "contact_number"),

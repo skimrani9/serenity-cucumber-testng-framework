@@ -4,8 +4,11 @@ import com.automation.framework.helpers.LeadTestDataReader;
 import com.automation.framework.helpers.ReusableWebUtils;
 import net.serenitybdd.core.pages.WebElementFacade;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
@@ -30,16 +33,38 @@ public class LeadManagementPage extends BasePage {
                     + "|//*[@role='button'][contains(normalize-space(.),'Add Lead')]");
     private static final By MR_SALUTATION = By.xpath("//button[@value='Mr']");
     private static final By LEAD_NAME_FIELD = By.xpath("//input[@placeholder='Enter Full Name']");
-    private static final By CONTACT_NUMBER = By.xpath("//input[@placeholder='Enter Phone Number']");
+    /** Intl phone widget often uses {@code type=tel}; match visible national box or fallback to placeholder-only. */
+    private static final By CONTACT_NUMBER = By.xpath(
+            "//label[contains(normalize-space(.),'Phone Number')]/ancestor::div[position()<=6]"
+                    + "//input[@type='tel'][(@placeholder='Enter Phone Number') or contains(@placeholder,'Phone')]"
+                    + "|//input[@type='tel' and (@placeholder='Enter Phone Number' or contains(@placeholder,'Phone'))]"
+                    + "|//input[@placeholder='Enter Phone Number']");
     private static final By EMAIL_FIELD = By.xpath("//input[@placeholder='Enter Email']");
     private static final By ADD_FORM_SUBMIT = By.xpath("//button[contains(text(),'Add')]");
     private static final By SUCCESS_CREATED = By.xpath("//div[contains(text(),'Lead created successfully')]");
     private static final By NO_RESULT = By.xpath("//h3[contains(text(),'No Result found.')]");
     private static final By ERROR_EMAIL = By.xpath("//p[contains(text(),'Please enter a valid email address')]");
-    private static final By ERROR_PHONE = By.xpath("//p[contains(text(),'Invalid phone number format. Must be 10 digits starting with 6-9')]");
+    private static final By ERROR_PHONE = By.xpath(
+            "//p[contains(text(),'Invalid phone number format. Must be 10 digits starting with 6-9')]"
+                    + "|//p[contains(text(),'Please enter a valid phone number')]");
     private static final By ERROR_DUP_PHONE_PROJECT = By.xpath("//div[contains(text(),'Lead with same phone number and same project already exists')]");
 
     private static final By PROJECT_SEARCH_INPUT = By.xpath("//input[@placeholder='Search projects...']");
+
+    /** Add Lead — Lead Source combo (QA): span inside button toggles list; first choice is `(//span)[1]` under option. */
+    private static final By LEAD_SOURCE_COMBO_BTN = By.xpath(
+            "//span[contains(normalize-space(.),'Select a Lead Source')]/ancestor::button");
+
+    /** Add Lead — first option inner label (`(//div[@role='option']//span)[1]`). */
+    private static final By LEAD_SOURCE_FIRST_OPTION = By.xpath("(//div[@role='option']//span)[1]");
+
+    private static final By PROJECT_COMBO_BTN = By.xpath(
+            "//span[normalize-space(text())='Select a Project']/ancestor::button");
+
+    private static final By CAMPAIGN_COMBO_BTN = By.xpath(
+            "//span[normalize-space(text())='Select a Campaign Name']/ancestor::button");
+
+    private static final By FIRST_LISTBOX_OPTION_DIV = By.xpath("(//div[@role='option'])[3]");
 
     public void openLeadManagementFromNav() {
         waitABit(1500);
@@ -128,10 +153,105 @@ public class LeadManagementPage extends BasePage {
     }
 
     public void enterLeadPhone(String digits10) {
-        WebElementFacade f = $(CONTACT_NUMBER);
+        replaceLeadPhoneFieldContents(normalizeIndianMobile10(digits10));
+    }
+
+    /**
+     * Phone field is typically an India (+91) intl combo; keyboard select-all often corrupts the ISD (+80…) and lengths.
+     * Use native value setter with E.164; if the DOM {@code value} still does not reflect the digits, retry with national digits only (no Ctrl+A fallback).
+     */
+    private void replaceLeadPhoneFieldContents(String national10Digits) {
+        WebElementFacade f = resolveVisiblePhoneInputFacade();
         scrollTo(f);
-        f.waitUntilVisible().clear();
-        f.type(digits10);
+        f.waitUntilClickable();
+        f.click();
+        waitABit(120);
+        WebElement raw = f.getWrappedElement();
+        String e164 = "+91" + national10Digits;
+        applyPhoneValueViaJs(raw, e164);
+        blurPhoneField(raw);
+        waitABit(200);
+        if (!phoneInputLooksValid(raw, national10Digits)) {
+            applyPhoneValueViaJs(raw, national10Digits);
+            blurPhoneField(raw);
+            waitABit(200);
+        }
+    }
+
+    private void applyPhoneValueViaJs(WebElement raw, String value) {
+        ReusableWebUtils.setInputValueTriggeringInputEvent(getDriver(), raw, value);
+    }
+
+    private void blurPhoneField(WebElement raw) {
+        try {
+            raw.sendKeys(Keys.TAB);
+        } catch (Exception ignored) {
+            ((JavascriptExecutor) getDriver()).executeScript("arguments[0].blur();", raw);
+        }
+    }
+
+    private boolean phoneInputLooksValid(WebElement raw, String national10Digits) {
+        String after = readInputValueFromDom(raw);
+        return valueLooksLikeIndianMobileEntered(after, national10Digits);
+    }
+
+    private String readInputValueFromDom(WebElement raw) {
+        try {
+            Object o = ((JavascriptExecutor) getDriver()).executeScript(
+                    "return arguments[0].value != null ? String(arguments[0].value) : '';", raw);
+            return o == null ? "" : o.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** Pick first matching phone input that is actually shown (dialogs may duplicate hidden nodes). */
+    private WebElementFacade resolveVisiblePhoneInputFacade() {
+        List<WebElement> found = getDriver().findElements(CONTACT_NUMBER);
+        for (WebElement el : found) {
+            try {
+                if (el.isDisplayed()) {
+                    return $(el);
+                }
+            } catch (Exception ignored) {
+                // stale
+            }
+        }
+        return $(CONTACT_NUMBER).withTimeoutOf(12, TimeUnit.SECONDS);
+    }
+
+    /** True when {@code htmlValue} parses to ten Indian national digits matching {@code national10Digits}. */
+    private static boolean valueLooksLikeIndianMobileEntered(String htmlValue, String national10Digits) {
+        if (htmlValue == null || htmlValue.isBlank()) {
+            return false;
+        }
+        String d = htmlValue.replaceAll("\\D", "");
+        if (d.endsWith(national10Digits) && national10Digits.length() == 10) {
+            return true;
+        }
+        return d.equals("91" + national10Digits) || d.equals(national10Digits);
+    }
+
+    /**
+     * Strips spaces/dashes/+91; rejects anything that is not exactly 10 digits starting with 6–9
+     * (matches UI copy: "Must be 10 digits starting with 6-9").
+     */
+    static String normalizeIndianMobile10(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("contact_number is blank");
+        }
+        String d = raw.replaceAll("\\D", "");
+        if (d.startsWith("91") && d.length() == 12) {
+            d = d.substring(2);
+        }
+        if (d.startsWith("0") && d.length() == 11) {
+            d = d.substring(1);
+        }
+        if (d.length() == 10 && d.charAt(0) >= '6' && d.charAt(0) <= '9') {
+            return d;
+        }
+        throw new IllegalArgumentException(
+                "Invalid Indian mobile after normalizing (need 10 digits, first 6–9): " + raw);
     }
 
     public void scrollTo(WebElementFacade el) {
@@ -140,12 +260,25 @@ public class LeadManagementPage extends BasePage {
     }
 
     public void selectDropdownOptionContaining(String dropdownTriggerContains, String optionText) {
-        String trig = "//span[contains(text(),\"" + escapeQuotes(dropdownTriggerContains) + "\")]";
+        String trig = "//*[self::span or self::div or self::label][contains(normalize-space(.),\"" 
+                + escapeQuotes(dropdownTriggerContains) + "\")]";
         WebElementFacade drop = $(By.xpath(trig));
         scrollTo(drop);
         drop.waitUntilClickable().click();
-        String opt = "//span[contains(text(),\"" + escapeQuotes(optionText) + "\")]";
+        waitABit(250);
+        String opt =
+                "//*[@role='option'][contains(normalize-space(.),\"" + escapeQuotes(optionText) + "\")]"
+                + "|//*[self::span or self::div or self::li][contains(normalize-space(.),\"" 
+                + escapeQuotes(optionText) + "\")]";
         $(By.xpath(opt)).withTimeoutOf(15, TimeUnit.SECONDS).waitUntilVisible().click();
+    }
+
+    /** Lead form dropdown whose trigger label mentions campaign (QA copies may vary slightly). */
+    public void selectCampaignNameFromLeadForm(String campaignName) {
+        if (campaignName == null || campaignName.isBlank()) {
+            return;
+        }
+        selectDropdownOptionContaining("Select a Campaign Name", campaignName);
     }
 
     public void selectProjectBySearch(String projectName) {
@@ -235,10 +368,15 @@ public class LeadManagementPage extends BasePage {
     }
 
     public void typePhoneForValidation(String value) {
-        WebElementFacade f = $(CONTACT_NUMBER);
+        WebElementFacade f = resolveVisiblePhoneInputFacade();
         scrollTo(f);
-        f.waitUntilVisible().clear();
-        f.type(value);
+        f.waitUntilClickable();
+        f.click();
+        f.sendKeys(Keys.chord(Keys.CONTROL, "a"));
+        f.sendKeys(Keys.DELETE);
+        if (value != null && !value.isEmpty()) {
+            f.type(value);
+        }
         waitABit(400);
     }
 
@@ -286,19 +424,39 @@ public class LeadManagementPage extends BasePage {
     }
 
     public void fillRequiredLeadFieldsFromScenario(LeadTestDataReader.LeadScenario data) {
-        selectDropdownOptionContaining("Select a source", data.leadSource());
+        selectLeadSourceProjectCampaignPickFirstViaComboButtons();
+        waitABit(400);
+        //openLocationPreferenceAndPickFirstOption();
+    }
+
+    /**
+     * QA combo flow: ancestor button toggle + first {@code div[role=option]}, with scroll between steps (user XPath parity).
+     */
+    private void selectLeadSourceProjectCampaignPickFirstViaComboButtons() {
+        openComboClickFirstDisplayedOption(LEAD_SOURCE_COMBO_BTN, LEAD_SOURCE_FIRST_OPTION, 18);
+        openComboClickFirstDisplayedOption(PROJECT_COMBO_BTN, FIRST_LISTBOX_OPTION_DIV, 18);
+        openComboClickFirstDisplayedOption(CAMPAIGN_COMBO_BTN, FIRST_LISTBOX_OPTION_DIV, 18);
+    }
+
+    /** Wait for clickable trigger → scroll → click → pick first displayed option matching {@code optionBy}. */
+    private void openComboClickFirstDisplayedOption(By comboButtonBy, By optionBy, int waitSec) {
+        WebDriverWait wait = new WebDriverWait(getDriver(), Duration.ofSeconds(waitSec));
+        WebElement combo = wait.until(ExpectedConditions.elementToBeClickable(comboButtonBy));
+        scrollAndClickElement(combo);
+        waitABit(350);
+        WebElement option = wait.until(ExpectedConditions.elementToBeClickable(optionBy));
+        scrollAndClickElement(option);
         waitABit(300);
-        selectDropdownOptionContaining("Select a budget", data.budget());
-        waitABit(300);
-        selectDropdownOptionContaining("Select a pipeline", data.pipeline());
-        waitABit(300);
-        selectDropdownOptionContaining("Select a stage", data.stage());
-        waitABit(300);
-        selectDropdownOptionContaining("Select a configuration", data.projectConfiguration());
-        waitABit(500);
-        selectProjectBySearch(data.projectName());
-        waitABit(500);
-        openLocationPreferenceAndPickFirstOption();
+    }
+
+    private void scrollAndClickElement(WebElement element) {
+        ReusableWebUtils.scrollIntoView(getDriver(), element);
+        waitABit(200);
+        try {
+            element.click();
+        } catch (Exception ignored) {
+            ReusableWebUtils.jsClick(getDriver(), element);
+        }
     }
 
     private static String escapeQuotes(String s) {

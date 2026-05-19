@@ -30,6 +30,7 @@
     "stage": "Won",
     "project_configuration": "3BHK",
     "project_name": "demo project",
+    "campaign_name": "Website",
     "project_preferences_location": "No",
     "project_location": "Wakad"
   },
@@ -42,6 +43,7 @@
     "stage": "Won",
     "project_configuration": "3BHK",
     "project_name": "Test Meta Lead",
+    "campaign_name": "Website",
     "project_preferences_location": "No",
     "project_location": "Baner"
   },
@@ -54,6 +56,7 @@
     "stage": "Won",
     "project_configuration": "3BHK",
     "project_name": "Test Meta Lead",
+    "campaign_name": "Website",
     "project_preferences_location": "No",
     "project_location": "Baner",
     "role": "All Module All Permissions",
@@ -68,6 +71,7 @@
     "stage": "Won",
     "project_configuration": "2BHK",
     "project_name": "Hiranadani",
+    "campaign_name": "Website",
     "project_preferences_location": "No",
     "project_location": "Wakad",
     "role": "All Module All Permissions",
@@ -107,6 +111,7 @@
     "stage": "Won",
     "project_configuration": "3BHK",
     "project_name": "demo project",
+    "campaign_name": "Website",
     "project_preferences_location": "No",
     "contact_number": "9876543210"
   }
