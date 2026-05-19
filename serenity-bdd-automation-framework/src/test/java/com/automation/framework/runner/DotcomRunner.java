@@ -1,19 +1,17 @@
-package runners;
+package com.automation.framework.runner;
 
 import io.cucumber.junit.CucumberOptions;
 import net.serenitybdd.cucumber.CucumberWithSerenity;
 import org.junit.runner.RunWith;
 
 /**
- * JUnit entry point that runs Cucumber with Serenity reporting/instrumentation.
- * <p>
- * Execute with Maven: {@code mvn clean verify}
+ * Primary Cucumber + Serenity entry point (Maven Surefire).
  */
 @RunWith(CucumberWithSerenity.class)
 @CucumberOptions(
         plugin = {"pretty"},
         features = "classpath:features",
-        glue = {"stepdefinitions"}
+        glue = {"com.automation.framework.hooks", "com.automation.framework.stepdefinitions"}
 )
-public class LoginTestRunner {
+public class DotcomRunner {
 }

@@ -4,48 +4,58 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.example.serenity</groupId>
+    <groupId>com.automation.framework</groupId>
     <artifactId>serenity-bdd-automation-framework</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>serenity-bdd-automation-framework</name>
-    <description>Beginner-friendly Serenity BDD + Cucumber + Selenium framework</description>
+    <description>Serenity BDD + Cucumber automation (layered framework layout)</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <serenity.version>4.2.28</serenity.version>
         <cucumber.version>7.20.1</cucumber.version>
         <junit.version>4.13.2</junit.version>
         <selenium.version>4.27.0</selenium.version>
         <webdrivermanager.version>5.9.2</webdrivermanager.version>
         <testng.version>7.10.2</testng.version>
+        <checkstyle.version>10.21.4</checkstyle.version>
     </properties>
 
     <dependencies>
-        <!-- Serenity BDD core -->
+        <!-- Framework core (compile): driver bootstrap + Selenium helpers -->
+        <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <version>${selenium.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.bonigarcia</groupId>
+            <artifactId>webdrivermanager</artifactId>
+            <version>${webdrivermanager.version}</version>
+        </dependency>
+
+        <!-- Serenity + Cucumber (test scope) -->
         <dependency>
             <groupId>net.serenity-bdd</groupId>
             <artifactId>serenity-core</artifactId>
             <version>${serenity.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- Serenity + Cucumber 7 integration -->
         <dependency>
             <groupId>net.serenity-bdd</groupId>
             <artifactId>serenity-cucumber</artifactId>
             <version>${serenity.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- JUnit 4 runner used by CucumberWithSerenity (per framework requirements) -->
         <dependency>
             <groupId>net.serenity-bdd</groupId>
             <artifactId>serenity-junit</artifactId>
             <version>${serenity.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- Cucumber -->
         <dependency>
             <groupId>io.cucumber</groupId>
             <artifactId>cucumber-java</artifactId>
@@ -64,28 +74,12 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- Selenium 4 (explicit version; aligns with Serenity) -->
-        <dependency>
-            <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-java</artifactId>
-            <version>${selenium.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- Automatic driver management -->
-        <dependency>
-            <groupId>io.github.bonigarcia</groupId>
-            <artifactId>webdrivermanager</artifactId>
-            <version>${webdrivermanager.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- TestNG on classpath for stack compatibility (runner uses JUnit + CucumberWithSerenity) -->
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>${testng.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- JSON test data (users.json keys like TC_LOGIN_001) -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
@@ -95,7 +89,6 @@
     </dependencies>
 
     <build>
-        <!-- Include root serenity.conf on the test classpath (Serenity reads it from classpath). -->
         <testResources>
             <testResource>
                 <directory>src/test/resources</directory>
@@ -104,6 +97,7 @@
                 <directory>${project.basedir}</directory>
                 <includes>
                     <include>serenity.conf</include>
+                    <include>global.properties</include>
                 </includes>
             </testResource>
         </testResources>
@@ -113,17 +107,42 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>17</source>
-                    <target>17</target>
+                    <release>21</release>
                 </configuration>
             </plugin>
-            <!-- Runs Cucumber feature tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.6.0</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${checkstyle.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <configLocation>checkstyle.xml</configLocation>
+                    <consoleOutput>true</consoleOutput>
+                    <failsOnError>true</failsOnError>
+                    <violationSeverity>error</violationSeverity>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>validate-style</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
                 <dependencies>
-                    <!-- TestNG is on the classpath for future suites; force JUnit 4 so CucumberWithSerenity runs -->
                     <dependency>
                         <groupId>org.apache.maven.surefire</groupId>
                         <artifactId>surefire-junit4</artifactId>
@@ -131,27 +150,29 @@
                     </dependency>
                 </dependencies>
                 <configuration>
-                    <!-- LoginTestRunner does not match default *Test.java pattern -->
                     <includes>
                         <include>**/*Test.java</include>
-                        <include>**/*TestRunner.java</include>
+                        <include>**/*Runner.java</include>
                     </includes>
-                    <!-- Continue to verify phase so serenity-maven-plugin can aggregate reports when scenarios fail -->
+                    <excludes>
+                        <!-- TestNG bootstrap lives under runner/testng (run manually / IDE / separate profile). -->
+                        <exclude>**/runner/testng/**</exclude>
+                    </excludes>
                     <testFailureIgnore>true</testFailureIgnore>
                     <systemPropertyVariables>
                         <environment>qa</environment>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
-            <!-- Serenity HTML report aggregation after tests -->
             <plugin>
                 <groupId>net.serenity-bdd.maven.plugins</groupId>
                 <artifactId>serenity-maven-plugin</artifactId>
                 <version>${serenity.version}</version>
                 <executions>
+                    <!-- Runs after Surefire tests (same as verify/install), but not after `mvn test` alone. -->
                     <execution>
                         <id>serenity-reports</id>
-                        <phase>verify</phase>
+                        <phase>prepare-package</phase>
                         <goals>
                             <goal>aggregate</goal>
                         </goals>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  Bootstrap TestNG suite (parallel skeleton).
+  Cucumber + Serenity execution remains via Maven Surefire + DotcomRunner (JUnit 4).
+-->
+<suite name="Automation-framework" parallel="tests" thread-count="5" verbose="1">
+    <test name="toolkit-bootstrap">
+        <classes>
+            <class name="com.automation.framework.runner.testng.FrameworkToolkitSanityTest"/>
+        </classes>
+    </test>
+</suite>

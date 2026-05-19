@@ -1,18 +1,24 @@
 {
   "TC_LOGIN_001": {
     "username": "imran.shaikh@indexnine.com",
-    "password": "1234567890"
+    "password": "Imran@123",
+    "otp_code": ""
   },
   "TC_LOGIN_002": {
-    "username": "invalid@example.com",
-    "password": "wrong-password"
+    "username": "invalid-user-notregistered@invalid-domain.test",
+    "password": "",
+    "otp_code": "123456"
   },
   "TC_LOGIN_003": {
     "username": "",
-    "password": ""
+    "password": "",
+    "otp_code": ""
   },
+  "TC_LOGIN_004": {},
+  "TC_LOGIN_005": {},
   "TC_LOGIN_006": {
     "username": "imran.shaikh@indexnine.com",
-    "password": "test@123"
+    "password": "Imran@123",
+    "otp_code": ""
   }
 }

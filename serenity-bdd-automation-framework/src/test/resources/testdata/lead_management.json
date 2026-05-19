@@ -1,0 +1,113 @@
+{
+  "TC_01": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123",
+    "module_name": "User,Lead",
+    "shift": "Morning Shift"
+  },
+  "TC_02": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123",
+    "module_name": "Lead",
+    "shift": "Morning Shift"
+  },
+  "TC_03": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123",
+    "otp_code": "654321"
+  },
+  "TC_04": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123",
+    "lead_name": "abcd"
+  },
+  "TC_05": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123",
+    "lead_source": "Google",
+    "budget": "Below 50L",
+    "pipeline": "aqua pen",
+    "stage": "Won",
+    "project_configuration": "3BHK",
+    "project_name": "demo project",
+    "project_preferences_location": "No",
+    "project_location": "Wakad"
+  },
+  "TC_06": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123",
+    "lead_source": "Google",
+    "budget": "Below 50L",
+    "pipeline": "aqua pen",
+    "stage": "Won",
+    "project_configuration": "3BHK",
+    "project_name": "Test Meta Lead",
+    "project_preferences_location": "No",
+    "project_location": "Baner"
+  },
+  "TC_07": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123",
+    "lead_source": "Google",
+    "budget": "Below 50L",
+    "pipeline": "aqua pen",
+    "stage": "Won",
+    "project_configuration": "3BHK",
+    "project_name": "Test Meta Lead",
+    "project_preferences_location": "No",
+    "project_location": "Baner",
+    "role": "All Module All Permissions",
+    "shift": "Evening Shift"
+  },
+  "TC_08": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123",
+    "lead_source": "Google",
+    "budget": "Below 50L",
+    "pipeline": "aqua pen",
+    "stage": "Won",
+    "project_configuration": "2BHK",
+    "project_name": "Hiranadani",
+    "project_preferences_location": "No",
+    "project_location": "Wakad",
+    "role": "All Module All Permissions",
+    "shift": "Evening Shift",
+    "project_name_list": ["Hiranadani", "QA Project"]
+  },
+  "TC_09": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123"
+  },
+  "TC_10": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123"
+  },
+  "TC_11": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123"
+  },
+  "TC_12": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123"
+  },
+  "TC_13": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123"
+  },
+  "TC_14": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123"
+  },
+  "TC_15": {
+    "admin_email": "imran.shaikh@indexnine.com",
+    "admin_password": "Imran@123",
+    "lead_source": "Google",
+    "budget": "Below 50L",
+    "pipeline": "aqua pen",
+    "stage": "Won",
+    "project_configuration": "3BHK",
+    "project_name": "demo project",
+    "project_preferences_location": "No",
+    "contact_number": "9876543210"
+  }
+}

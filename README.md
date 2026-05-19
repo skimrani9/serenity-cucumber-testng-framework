@@ -110,14 +110,29 @@ cd serenity-bdd-automation-framework
 mvn clean verify
 ```
 
-- **`test`**: Surefire runs **`LoginTestRunner`** (patterns `**/*Test.java` and `**/*TestRunner.java`).
-- **`verify`**: **`serenity-maven-plugin`** runs **`aggregate`** and writes HTML under **`target/site/serenity/`**.
+- **`test`**: Surefire runs Cucumber via **`DotcomRunner`** (patterns `**/*Test.java` and `**/*Runner.java`).
+- **`prepare-package`** / **`package`** / **`verify`**: **`serenity-maven-plugin`** runs **`aggregate`** and writes HTML under **`target/site/serenity/`**.
 
-Surefire is set with **`testFailureIgnore`** so the build can still reach **`verify`** and generate reports when scenarios fail.
+Surefire is set with **`testFailureIgnore`** so the build can still reach later phases and generate reports when scenarios fail.
+
+#### Why no HTML report after `mvn test`?
+
+`mvn test` stops at the **`test`** phase. Serenity builds the HTML report in **`prepare-package`** (via this project’s `pom.xml`). Use one of these:
+
+```bash
+# Recommended: runs tests then report
+mvn clean verify -Denvironment=qa "-Dcucumber.filter.tags=@TC_03"
+
+# Same idea (runs tests, then reaches prepare-package)
+mvn clean package -Denvironment=qa "-Dcucumber.filter.tags=@TC_03"
+
+# If you already use `mvn test`, chain the report goal:
+mvn test serenity:aggregate -Denvironment=qa "-Dcucumber.filter.tags=@TC_03"
+```
 
 ### 7. Open the Serenity report
 
-After a successful **`mvn clean verify`** (from the module directory):
+After **`mvn clean verify`**, **`mvn clean package`**, or **`mvn test serenity:aggregate`** (from the module directory):
 
 ```text
 target/site/serenity/index.html
