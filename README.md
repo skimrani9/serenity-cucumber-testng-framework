@@ -1,6 +1,6 @@
 # Serenity BDD automation (Cucumber + Selenium)
 
-Maven module **serenity-bdd-automation-framework** under this repo: UI tests against a local app (default `http://localhost:5173`).
+UI automation against the QA Manthan app (default `https://qa.manthan.justo.co.in`).
 
 ---
 
@@ -8,13 +8,13 @@ Maven module **serenity-bdd-automation-framework** under this repo: UI tests aga
 
 | Area | Library / tool |
 |------|------------------|
-| Language | Java **17** |
+| Language | Java **21** |
 | Build | **Maven** |
 | BDD / reporting | **Serenity BDD** `4.2.28` (`serenity-core`, `serenity-cucumber`, `serenity-junit`) |
 | Gherkin | **Cucumber** `7.20.1` |
 | Test runner | **JUnit 4** + `CucumberWithSerenity` |
 | Browser | **Selenium** `4.27.0` + **WebDriverManager** `5.9.2` |
-| Test data | **Gson** `2.11.0` (`testdata/users.json`) |
+| Test data | **Gson** `2.11.0` (`testdata/users.json`, `testdata/lead_management.json`) |
 | Classpath | **TestNG** `7.10.2` (Surefire is configured with **JUnit 4** so Cucumber runs) |
 
 ---
@@ -23,66 +23,72 @@ Maven module **serenity-bdd-automation-framework** under this repo: UI tests aga
 
 ```text
 serenity-cucumber-testng-framework/
-├── .gitignore
-├── README.md
-└── serenity-bdd-automation-framework/
-    ├── pom.xml
-    ├── serenity.conf
-    └── src/test/
-        ├── java/
-        │   ├── runners/
-        │   │   └── LoginTestRunner.java
+├── pom.xml
+├── serenity.conf
+├── global.properties
+├── testng.xml
+├── local_run.bat
+├── RunTestData.bat
+├── checkstyle.xml
+├── docs/
+├── qualityGates/
+└── src/
+    ├── main/java/com/automation/framework/
+    │   ├── config/
+    │   ├── constants/
+    │   ├── driver/
+    │   └── helpers/
+    └── test/
+        ├── java/com/automation/framework/
+        │   ├── helpers/
+        │   ├── hooks/
+        │   ├── pageObjects/
+        │   ├── runner/
         │   ├── stepdefinitions/
-        │   │   └── LoginStepDefinitions.java
-        │   ├── pages/
-        │   │   └── LoginPage.java
-        │   ├── steps/
-        │   │   └── LoginActions.java
-        │   └── utils/
-        │       └── TestDataReader.java
+        │   └── steps/
         └── resources/
+            ├── config/
             ├── features/
-            │   └── login.feature
             ├── testdata/
-            │   └── users.json
-            └── environments/
-                └── qa.properties
+            └── cucumber.properties
 ```
+
+See `docs/PROJECT_STRUCTURE.md` for layer details.
 
 ---
 
 ## Prerequisites
 
-- **JDK 17**
+- **JDK 21**
 - **Maven 3.8+**
 - **Google Chrome** (default in `serenity.conf`)
-- Application reachable at the configured base URL (default **http://localhost:5173**)
+- Application reachable at the configured base URL
 
 ---
 
 ## Setup
 
-### 1. Use the Maven module directory
+### 1. Run Maven from the repo root
 
-All Maven commands must run where **`pom.xml`** exists:
+All Maven commands run where **`pom.xml`** lives (this directory):
 
 ```bash
-cd serenity-bdd-automation-framework
+mvn clean verify
 ```
 
-(From the repo root you can use: `mvn -f serenity-bdd-automation-framework/pom.xml ...`.)
+Windows shortcuts: `local_run.bat`, `RunTestData.bat`
 
 ### 2. Base URL and Serenity config
 
-- **`serenity.conf`** (next to `pom.xml`) is added to the test classpath via `pom.xml` and sets `webdriver.base.url` for **qa** / **default** (default: `http://localhost:5173`).
-- **`src/test/resources/environments/qa.properties`** can override `webdriver.base.url` for the **qa** environment.
+- **`serenity.conf`** (repo root) is added to the test classpath via `pom.xml` and sets `webdriver.base.url` for **qa** / **default**.
+- **`src/test/resources/config/QAConfig.properties`** can override `webdriver.base.url`.
 - Surefire sets **`environment=qa`** by default.
 
 Examples:
 
 ```bash
 mvn clean verify -Denvironment=qa
-mvn clean verify -Dwebdriver.base.url=http://localhost:3000
+mvn clean verify -Dwebdriver.base.url=https://qa.manthan.justo.co.in
 ```
 
 Browser (default **chrome**):
@@ -91,22 +97,13 @@ Browser (default **chrome**):
 mvn clean verify -Dwebdriver.driver=firefox
 ```
 
-### 3. Login route in code
+### 3. Test credentials
 
-`LoginPage` uses `@DefaultUrl("/")`. If the login screen is not at the site root, change it (for example `@DefaultUrl("/login")`).
+Edit **`src/test/resources/testdata/users.json`** and **`src/test/resources/testdata/lead_management.json`**. Keys must match the strings used in feature files.
 
-### 4. Test credentials
-
-Edit **`src/test/resources/testdata/users.json`**. Keys such as **`TC_LOGIN_001`** must match the strings used in **`login.feature`**. Put real credentials in **`TC_LOGIN_001`** for a successful login run.
-
-### 5. Start the application
-
-Start your web app before running UI tests so the configured **`webdriver.base.url`** responds.
-
-### 6. Build and run tests
+### 4. Build and run tests
 
 ```bash
-cd serenity-bdd-automation-framework
 mvn clean verify
 ```
 
@@ -115,9 +112,7 @@ mvn clean verify
 
 Surefire is set with **`testFailureIgnore`** so the build can still reach later phases and generate reports when scenarios fail.
 
-#### Why no HTML report after `mvn test`?
-
-`mvn test` stops at the **`test`** phase. Serenity builds the HTML report in **`prepare-package`** (via this project’s `pom.xml`). Use one of these:
+#### Filter by Cucumber tag
 
 ```bash
 # Recommended: runs tests then report
@@ -130,18 +125,12 @@ mvn clean package -Denvironment=qa "-Dcucumber.filter.tags=@TC_03"
 mvn test serenity:aggregate -Denvironment=qa "-Dcucumber.filter.tags=@TC_03"
 ```
 
-### 7. Open the Serenity report
+### 5. Open the Serenity report
 
-After **`mvn clean verify`**, **`mvn clean package`**, or **`mvn test serenity:aggregate`** (from the module directory):
+After **`mvn clean verify`**, **`mvn clean package`**, or **`mvn test serenity:aggregate`**:
 
 ```text
 target/site/serenity/index.html
-```
-
-Full path example:
-
-```text
-serenity-bdd-automation-framework/target/site/serenity/index.html
 ```
 
 Open **`index.html`** in a browser.
