@@ -64,7 +64,7 @@ public class LeadManagementPage extends BasePage {
     private static final By CAMPAIGN_COMBO_BTN = By.xpath(
             "//span[normalize-space(text())='Select a Campaign Name']/ancestor::button");
 
-    private static final By FIRST_LISTBOX_OPTION_DIV = By.xpath("(//div[@role='option'])[3]");
+    private static final By FIRST_LISTBOX_OPTION_DIV = By.xpath("(//div[@role='option'])[4]");
 
     public void openLeadManagementFromNav() {
         waitABit(1500);
